@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>테이퍼 계산기</title>
+<style>
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; font-family:-apple-system,"Noto Sans KR",system-ui,sans-serif}
+  html,body{margin:0; background:#fff; color:#222}
+  .app{max-width:520px; margin:0 auto}
+
+  .top{background:#faf37e; display:flex; align-items:center; justify-content:space-between; padding:10px 12px}
+  .top .title{font-size:22px; font-weight:800}
+  .top .btns{display:flex; gap:7px}
+  .navb{width:56px; height:50px; border:1px solid #cfc96a; border-radius:8px; background:#fbf7a8;
+    display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; line-height:1.15; cursor:pointer}
+  .navb.on{background:#fff; border-color:#e0b000; box-shadow:0 0 0 2px #e0b000 inset}
+  .navb.n1{color:#c0392b}.navb.n1 b{color:#2c66c0}
+  .navb svg{width:34px;height:30px}
+
+  .page{display:none; padding:8px 14px}
+  .page.on{display:block}
+
+  /* 1. 모양 */
+  .grid{display:flex; flex-direction:column; gap:8px}
+  .grow{display:flex; gap:8px}
+  .cell{flex:1; aspect-ratio:1.15; background:#dfe1e3; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer}
+  .cell.sel{outline:3px solid #1e9e57; outline-offset:-1px}
+  .cell svg{width:82%; height:82%}
+  .gap{width:10px}
+  .about{flex:1; display:flex; align-items:center; justify-content:center; font-size:20px; color:#333; font-weight:700}
+
+  /* 2. 계산 */
+  .colhead{display:grid; grid-template-columns:34px 1fr 1fr 1fr; gap:12px; color:#888; font-size:15px; text-align:center}
+  .prow{display:grid; grid-template-columns:34px 1fr 1fr 1fr; gap:12px; align-items:center; margin:8px 0}
+  .prow .lab{color:#888; font-size:17px}
+  input.f{width:100%; border:none; border-bottom:1.5px solid #bbb; background:transparent; color:#111;
+    font-size:20px; padding:6px 2px; text-align:left; font-variant-numeric:tabular-nums}
+  input.f:focus{outline:none; border-bottom-color:#1e9e57}
+  input.f.solved{color:#1e73d8}
+  .ikrow{display:grid; grid-template-columns:auto 1fr auto 1fr auto 1fr; gap:8px; align-items:center; margin:16px 0 4px}
+  .ikrow .lab{color:#888; font-size:16px; white-space:nowrap}
+  .ikrow input.f{font-size:18px}
+  .noserow{display:flex; align-items:center; gap:10px; margin-top:12px}
+  .noserow .lab{color:#888; font-size:16px}
+  .noserow input.f{flex:1}
+  .acts{display:flex; gap:8px}
+  .acts .a{width:54px; height:50px; border:1px solid #ccc; border-radius:8px; background:#eee;
+    display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:800; cursor:pointer}
+  .acts .pm{color:#2c66c0}.acts .ok{color:#e08a2b}.acts .no{color:#e08a2b}.acts .eq{color:#2c66c0; border-color:#e59}
+  .hint{color:#c0392b; font-size:14px; margin-top:6px; min-height:16px}
+  .toggles{display:flex; gap:8px; margin:10px 0 0; flex-wrap:wrap}
+  .seg{display:flex; border:1px solid #ccc; border-radius:8px; overflow:hidden; font-size:13px}
+  .seg button{background:#f2f2f2; color:#888; border:none; padding:8px 12px; font-weight:700; cursor:pointer}
+  .seg button.on{background:#1e9e57; color:#fff}
+
+  /* 3. 방향 */
+  .dirbar{display:flex; align-items:center; gap:14px; padding:6px 2px 10px}
+  .dirbar .arrow{font-size:30px; color:#e08a2b; line-height:1}
+  .dirbar .updown{cursor:default}
+  .dirbar .lr{cursor:pointer; padding:4px 2px; border:1.5px solid transparent; border-radius:0; display:flex}
+  .dirbar #dirR{margin-left:-14px}
+  .dirbar .lr svg path{stroke-width:2.5}
+  .dirbar .lr.on{border-color:#e08a2b}
+  .dirbar .lr.on svg path{stroke-width:5}
+  .dirbar .dl{flex:1; text-align:center; font-size:20px; color:#666; font-weight:500}
+
+  .result{font-size:19px; line-height:1.6; white-space:pre-wrap; font-variant-numeric:tabular-nums; word-break:break-all; padding:4px 0}
+  .result .hl{background:#fff7b0}
+  .ncb{margin-top:12px; border:1.5px solid #e2e2e2; border-radius:8px; padding:8px 10px}
+  .ncb.cur{border-color:#e08a2b}
+  .nch{display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; white-space:normal}
+  .nch b{font-size:16px; color:#555}
+  .cpb{border:1px solid #bbb; background:#f4f4f4; border-radius:6px; padding:6px 14px; font-size:14px; font-weight:700; color:#333}
+  .cpb.done{background:#1e9e57; color:#fff; border-color:#1e9e57}
+  .cpb.fail{background:#c0392b; color:#fff; border-color:#c0392b}
+  .result.stale::before{content:'⚠ 입력값이 바뀌었습니다 · ✓ 눌러 다시 계산하세요'; display:block; color:#c0392b; font-size:15px; font-weight:700; white-space:normal; margin-bottom:6px}
+  .result.stale .hl, .result.stale .ncb{opacity:.3}
+  .result.stale .cpb{pointer-events:none}
+  .cell[data-k^="c"]{opacity:.45}
+  .acts .a.eq{opacity:.4}
+  .undo{border:none; background:none; color:#2c66c0; font-size:14px; font-weight:700; text-decoration:underline; padding:0 4px}
+
+  .diagram{padding:8px 8px 18px}
+  .diagram svg{width:100%; height:auto; display:block}
+  .navb,.cell,.acts .a,.lr,.arrow{touch-action:manipulation; user-select:none; -webkit-user-select:none}
+  .navb:active,.cell:active,.acts .a:active,.lr:active{opacity:.5}
+  .foot{color:#999; font-size:13px; padding:0 14px 20px; line-height:1.6}
+
+  /* ===== 현장용 다크 테마 (이 블록만 지우면 원래 색으로 돌아감) ===== */
+  :root{--bg:#1a1f24; --panel:#232a31; --tile:#2b333b; --line:#3a444e; --ink:#e3e8ec; --dim:#8d99a5;
+        --green:#4fd37a; --orange:#f39a3d; --blue:#6cb6ff; --red:#ff6b6b;}
+  html,body{background:var(--bg); color:var(--ink)}
+  .top{background:var(--panel); border-bottom:3px solid var(--orange); padding:12px 12px}
+  .top .title{font-size:21px; font-weight:800; color:var(--ink); letter-spacing:.5px}
+  .navb{background:var(--tile); border:1px solid var(--line); color:var(--ink); font-size:15px; font-weight:700}
+  .navb.on{background:var(--tile); border-color:var(--orange); box-shadow:0 0 0 2px var(--orange) inset; color:var(--orange)}
+  .cell{background:var(--tile); border:1px solid var(--line)}
+  .cell.sel{outline:3px solid var(--green)}
+  .about{color:var(--dim)}
+  .colhead,.prow .lab,.ikrow .lab,.noserow .lab{color:var(--dim)}
+  input.f{color:var(--ink); border-bottom-color:var(--line)}
+  input.f:focus{border-bottom-color:var(--orange)}
+  input.f.solved{color:var(--blue)}
+  .acts .a{background:var(--tile); border-color:var(--line)}
+  .acts .pm{color:var(--blue)} .acts .ok,.acts .no{color:var(--orange)} .acts .eq{color:var(--dim); border-color:var(--line)}
+  .hint{color:var(--red)}
+  .dirbar .dl{color:var(--ink)}
+  .result{color:var(--ink)}
+  .result .hl{background:rgba(79,211,122,.13); color:#dff7e7; border-radius:2px}
+  .ncb{border-color:var(--line); background:var(--panel)}
+  .ncb.cur{border-color:var(--orange)}
+  .nch b{color:var(--dim)}
+  .cpb{background:var(--tile); border-color:var(--line); color:var(--ink)}
+  .cpb.done{background:var(--green); border-color:var(--green); color:#10261a}
+  .cpb.fail{background:var(--red); border-color:var(--red); color:#2a0f0f}
+  .result.stale::before{color:var(--red)}
+  .undo{color:var(--blue)}
+  .foot{color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="top">
+    <div class="title">테이퍼 계산기</div>
+    <div class="btns">
+      <div class="navb on" id="nav1" onclick="showPage(1)" title="모양">모양</div>
+      <div class="navb" id="nav2" onclick="showPage(2)" title="계산">계산</div>
+      <div class="navb" id="nav3" onclick="showPage(3)" title="방향">방향</div>
+    </div>
+  </div>
+
+  <!-- 1. 모양 -->
+  <div class="page on" id="page1">
+    <div class="grid" id="shapegrid"></div>
+  </div>
+
+  <!-- 2. 계산 -->
+  <div class="page" id="page2">
+    <div class="colhead"><div></div><div>X</div><div>Z</div><div>R</div></div>
+    <div class="prow"><div class="lab">P1</div>
+      <input class="f" id="x1" type="text" inputmode="decimal" autocomplete="off">
+      <input class="f" id="z1" type="text" inputmode="decimal" autocomplete="off">
+      <input class="f" id="r1" type="text" inputmode="decimal" autocomplete="off"></div>
+    <div class="prow"><div class="lab">P2</div>
+      <input class="f" id="x2" type="text" inputmode="decimal" autocomplete="off">
+      <input class="f" id="z2" type="text" inputmode="decimal" autocomplete="off">
+      <input class="f" id="r2" type="text" inputmode="decimal" autocomplete="off"></div>
+    <div class="ikrow">
+      <div class="lab">I(h)</div><input class="f" id="ih" type="number" readonly>
+      <div class="lab">K(w)</div><input class="f" id="kw" type="number" readonly>
+      <div class="lab">각도</div><input class="f" id="ang" type="text" inputmode="decimal" autocomplete="off" value="45.0"></div>
+    <div class="noserow"><div class="lab">noseR</div>
+      <input class="f" id="noser" type="text" inputmode="decimal" autocomplete="off">
+      <div class="acts">
+        <div class="a pm" onpointerdown="event.preventDefault()" onmousedown="event.preventDefault()" onclick="flipSign()">±</div>
+        <div class="a ok" onclick="calc()">✓</div>
+        <div class="a no" onclick="reset()">✗</div>
+        <div class="a eq">+=</div>
+      </div></div>
+    <div class="hint" id="hint">계산 버튼(✓)은 좌표를 계산합니다.</div>
+    <div class="result" id="res2"></div>
+  </div>
+
+  <!-- 3. 방향 -->
+  <div class="page" id="page3">
+    <div class="dirbar">
+      <div class="arrow updown" title="위아래">↑</div>
+      <div class="arrow updown" title="위아래">↓</div>
+      <div class="lr on" id="dirL" onclick="setDir('fwd')" title="정방향"><svg viewBox="0 0 44 28" width="44" height="28"><path d="M40 14 H8 M16 5 L6 14 L16 23" fill="none" stroke="#e08a2b" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="lr" id="dirR" onclick="setDir('rev')" title="역방향"><svg viewBox="0 0 44 28" width="44" height="28"><path d="M4 14 H36 M28 5 L38 14 L28 23" fill="none" stroke="#e08a2b" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="dl" id="dirlabel">정방향 절삭</div>
+    </div>
+    <div class="result" id="res3"></div>
+  </div>
+
+  <!-- 공통 도면 -->
+  <div class="diagram"><svg id="draw" viewBox="0 0 360 360"></svg></div>
+  <div class="foot" id="foot"></div>
+</div>
+
+<script>
+let diameter=true, adj1='face', adj2='face', dir='fwd', shapeSel=-1;
+let store={fwd:'',rev:'',ptsTxt:'',drew:false};
+const $=id=>document.getElementById(id);
+
+function showPage(n){
+  [1,2,3].forEach(i=>{$('page'+i).classList.toggle('on',i===n);$('nav'+i).classList.toggle('on',i===n);});
+}
+function toggleDir(){ setDir(dir==='fwd'?'rev':'fwd'); }
+function setDir(k){ dir=k;
+  $('dirL').classList.toggle('on',k==='fwd'); $('dirR').classList.toggle('on',k==='rev');
+  $('dirlabel').textContent=(dir==='fwd')?'정방향 절삭':'역방향 절삭';
+  if(!store.drew){$('res3').innerHTML='<span style="color:#ff6b6b">먼저 [계산] 화면에서 좌표를 계산하세요</span>';}
+  else renderResult(true);}
+
+/* ---------- 모양 아이콘 그리드 ---------- */
+function iconSVG(kind){
+  const S='<svg viewBox="0 0 60 60">', E='</svg>';
+  const br=(c)=>`<path d="M8 14 V8 H14 M46 8 H52 V14 M8 46 V52 H14 M46 52 H52 V46" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+  const prof=(d)=>`<path d="${d}" stroke="#c3ccd5" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const vline='<line x1="30" y1="12" x2="30" y2="48" stroke="#c3ccd5" stroke-width="5" stroke-linecap="round"/>';
+  const hline='<line x1="12" y1="30" x2="48" y2="30" stroke="#c3ccd5" stroke-width="5" stroke-linecap="round"/>';
+  const rot='<path d="M41 20 A14 14 0 1 0 44 33" fill="none" stroke="#7ee29d" stroke-width="4" stroke-linecap="round"/><path d="M41 20 l-9 1 M41 20 l1 9" fill="none" stroke="#7ee29d" stroke-width="4" stroke-linecap="round"/>';
+  const circIcon=(cX,cY)=>{
+    const cx=30,cy=31,r=10;
+    const vx=cX==='R'?42:18, hy=cY==='B'?43:19;
+    const red=`<line x1="${vx}" y1="${cy-13}" x2="${vx}" y2="${cy+13}" stroke="#e23b2e" stroke-width="2"/><line x1="${cx-13}" y1="${hy}" x2="${cx+13}" y2="${hy}" stroke="#e23b2e" stroke-width="2"/>`;
+    const ox=cX==='R'?1:-1, oy=cY==='B'?1:-1;
+    const tx=cx+ox*7, ty=cy+oy*8;
+    const rays=`<line x1="${tx}" y1="${ty}" x2="${cx-ox*23}" y2="${cy-oy*5}" stroke="#9aa5b0" stroke-width="1.5"/><line x1="${tx}" y1="${ty}" x2="${cx-ox*7}" y2="${cy-oy*24}" stroke="#9aa5b0" stroke-width="1.5"/>`;
+    return rays+red+`<circle cx="${cx}" cy="${cy}" r="${r}" fill="#f5921e"/>`;
+  };
+  switch(kind){
+    case 'cA': return S+circIcon('R','B')+E;   // 인선 우하
+    case 'cB': return S+circIcon('L','B')+E;   // 인선 좌하
+    case 'cC': return S+circIcon('R','T')+E;   // 인선 우상
+    case 'cD': return S+circIcon('L','T')+E;   // 인선 좌상
+    case 'vbar': case 'vbarT': case 'vbarB': return S+vline+E;
+    case 'hbar': case 'hbarL': case 'hbarR': return S+hline+E;
+    case 'rot': return S+rot+E;
+    case 's1': return S+br('#e08a2b')+prof('M27 49 V33 L42 19 H50')+E;
+    case 's2': return S+br('#e08a2b')+prof('M11 44 H25 L41 24 H50')+E;
+    case 's3': return S+br('#4aa0e0')+prof('M10 20 H26 L42 40 H52')+E;
+    case 's4': return S+br('#e08a2b')+prof('M38 10 V28 L24 38 V52')+E;
+    case 's5': return S+br('#e08a2b')+prof('M12 40 H28 L42 26 V10')+E;
+    case 's6': return S+br('#4aa0e0')+prof('M12 20 H28 L44 36 V52')+E;
+    case 's7': return S+br('#4aa0e0')+prof('M26 10 V26 L38 40 V52')+E;
+    case 's8': return S+br('#4aa0e0')+prof('M26 10 V24 L40 38 H52')+E;
+  }
+  return S+E;
+}
+// 형상 상태: sl='/'(P1 위) 또는 '\\'(P1 아래), p1/p2 끝선 'v'(세로=단면) 'h'(가로=외경)
+const SHAPES={
+  s1:{sl:'/', p1:'h',p2:'v'}, s2:{sl:'/', p1:'h',p2:'h'}, s3:{sl:'\\',p1:'h',p2:'h'},
+  s4:{sl:'/', p1:'v',p2:'v'}, s5:{sl:'/', p1:'v',p2:'h'}, s6:{sl:'\\',p1:'v',p2:'h'},
+  s7:{sl:'\\',p1:'v',p2:'v'}, s8:{sl:'\\',p1:'h',p2:'v'}
+};
+let SH={sl:'/', p1:'v', p2:'v'};   // 앱 기본화면 = s4
+function shapeKey(){ return Object.keys(SHAPES).find(k=>{const s=SHAPES[k];return s.sl===SH.sl&&s.p1===SH.p1&&s.p2===SH.p2;}); }
+function syncShape(){
+  adj1 = SH.p1==='v'?'face':'cyl';  adj2 = SH.p2==='v'?'face':'cyl';
+  const key=shapeKey();
+  document.querySelectorAll('.cell').forEach(c=>c.classList.toggle('sel', c.getAttribute('data-k')===key));
+}
+function buildGrid(){
+  const rows=[
+    ['cA','vbarT','cB', 'gap','s1','s2','s3'],
+    ['hbarL','rot','hbarR', 'gap','s4','s5','s6'],
+    ['cC','vbarB','cD', 'gap','s7','s8','about']
+  ];
+  let html='';
+  rows.forEach(r=>{
+    html+='<div class="grow">';
+    r.forEach(k=>{
+      if(k==='gap') html+='<div class="gap"></div>';
+      else if(k==='about') html+='<div class="about">about</div>';
+      else html+=`<div class="cell" data-k="${k}" onclick="pickShape(this,'${k}')">${iconSVG(k)}</div>`;
+    });
+    html+='</div>';
+  });
+  $('shapegrid').innerHTML=html;
+}
+function pickShape(el,k){
+  shapeSel=k;
+  if(SHAPES[k]) SH={...SHAPES[k]};                          // 오른쪽 8개 = 형상 통째로
+  else if(k==='hbarR') SH.p1='h';                           // 오른쪽 — : P1 가로
+  else if(k==='hbarL') SH.p2='h';                           // 왼쪽 —  : P2 가로
+  else if(k==='vbarT'){ if(SH.sl==='/') SH.p1='v'; else SH.p2='v'; }   // 위 | : 위쪽 점 세로
+  else if(k==='vbarB'){ if(SH.sl==='/') SH.p2='v'; else SH.p1='v'; }   // 아래 | : 아래쪽 점 세로
+  else if(k==='rot') SH.sl = SH.sl==='/'?'\\':'/';          // 회전 : 테이퍼 방향 반전
+  else return;                                              // 인선 아이콘은 기능 없음
+  syncShape();
+  if(store.drew) calc(); else drawProfile();
+}
+
+/* ---------- 계산 코어 (앱과 일치 검증됨) ---------- */
+const numv=id=>{const v=$(id).value.trim(); return v===''?null:parseFloat(v);};
+const Rr=x=>diameter? x/2 : x, toX=r=>diameter? r*2 : r;
+const D2R=d=>d*Math.PI/180, R2D=r=>r*180/Math.PI;
+function fmt(n,d=4){ if(n==null||isNaN(n)) return '-';
+  let s=(Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toFixed(d);
+  return s.replace(/(\.\d*?)0+$/,'$1').replace(/\.$/,'.0'); }
+function fmtP(n){ if(n==null||isNaN(n)) return '-'; return (Math.round(n*1e6)/1e6).toString(); }
+const fx=r=>fmt(toX(r));
+const V=(a,b)=>({r:a,z:b}), sub=(p,q)=>V(p.r-q.r,p.z-q.z), add=(p,q)=>V(p.r+q.r,p.z+q.z), mul=(p,s)=>V(p.r*s,p.z*s);
+const len=p=>Math.hypot(p.r,p.z), unit=p=>{const l=len(p)||1;return V(p.r/l,p.z/l);}, dot=(p,q)=>p.r*q.r+p.z*q.z;
+let G={};
+
+function calc(){
+  $('hint').textContent='';
+  // 자동으로 채워진(파란) 칸은 다시 구할 값으로 취급
+  const rd=id=>$(id).classList.contains('solved')?null:numv(id);
+  let x1=rd('x1'),z1=rd('z1'),x2=rd('x2'),z2=rd('z2'),ang=rd('ang');
+  ['x1','z1','x2','z2','ang'].forEach(i=>$(i).classList.remove('solved'));
+  let R1=numv('r1')||0, R2=numv('r2')||0; const has=v=>v!=null;
+  const miss=[x1,z1,x2,z2].filter(v=>!has(v)).length;
+  const put=(id,v)=>{$(id).value=fmtP(v);$(id).classList.add('solved');};
+  if(miss===0){
+    const dr=Rr(x2)-Rr(x1),dz=z2-z1; ang=(dz===0)?90:R2D(Math.atan(Math.abs(dr)/Math.abs(dz)));
+    put('ang',ang);
+  }else if(miss===1&&has(ang)){
+    // 기울기 부호: 모양 '/' = 오른쪽(Z큰) 점이 위, '\' = 아래
+    const t=(SH.sl==='/'?1:-1)*Math.tan(D2R(Math.abs(ang)));
+    if(!has(x1)||!has(x2)){ if(Math.abs(ang)>=90){$('hint').textContent='각도 90°에서는 X를 못 구해요';return;} }
+    else if(Math.abs(t)<1e-9){$('hint').textContent='각도 0°에서는 Z를 못 구해요';return;}
+    if(!has(x1)){ x1=toX(Rr(x2)+t*(z1-z2)); put('x1',x1); }
+    else if(!has(x2)){ x2=toX(Rr(x1)-t*(z1-z2)); put('x2',x2); }
+    else if(!has(z1)){ z1=z2+(Rr(x1)-Rr(x2))/t; put('z1',z1); }
+    else { z2=z1-(Rr(x1)-Rr(x2))/t; put('z2',z2); }
+  }else{ $('hint').textContent= miss===1 ? '각도를 입력하세요' : '입력 부족 · 좌표 4칸 중 1칸만 비우고 각도 입력, 또는 4칸 모두'; return; }
+
+  const P1=V(Rr(x1),z1),P2=V(Rr(x2),z2);
+  const dr=P2.r-P1.r,dz=P2.z-P1.z,I=Math.abs(dr),K=Math.abs(dz);
+  $('ih').value=fmtP(I);$('kw').value=fmtP(K); if($('ang').value==='')$('ang').value=fmtP(ang);
+
+  const fillet=(P,o,R,adj)=>{ if(R<=0)return null;
+    const uT=unit(sub(o,P)); let uA=adj==='cyl'?V(0,-Math.sign(o.z-P.z||1)):V(-Math.sign(o.r-P.r||1),0);
+    const phi=Math.acos(Math.max(-1,Math.min(1,dot(uT,uA)))),d=R/Math.tan(phi/2);
+    return {Tt:add(P,mul(uT,d)),Ta:add(P,mul(uA,d)),C:add(P,mul(unit(add(uT,uA)),R/Math.sin(phi/2))),R};};
+  const f1=fillet(P1,P2,R1,adj1),f2=fillet(P2,P1,R2,adj2);
+
+  const line=(l,p,e='')=>`${l} : X${fx(p.r)}, Z${fmt(p.z)}${e}`;
+  let txt='';
+  if(f1) txt+=line('T1',f1.Ta)+'\n'+line('T2',f1.Tt,', R'+fmt(R1))+';\n\n'; else txt+=line('P1',P1)+';\n\n';
+  if(f2) txt+=line('T3',f2.Tt)+'\n'+line('T4',f2.Ta,', R'+fmt(R2))+';'; else txt+=line('P2',P2)+';';
+  store.ptsTxt=txt;
+
+  const arcCode=(S,E,C)=>{const cr=(S.r-C.r)*(E.z-C.z)-(S.z-C.z)*(E.r-C.r);return cr<0?'G3':'G2';};
+  const gp=(g,p,r=null)=>`${g} X${fx(p.r)} Z${fmt(p.z)}${r!=null?' R'+fmt(r):''};`;
+  let pts_=[],segs_=[];
+  if(f1){pts_.push({p:f1.Ta,o:'P1'});pts_.push({p:f1.Tt,o:'P1'});segs_.push({t:'arc',C:f1.C,R:R1});}else pts_.push({p:P1,o:'P1'});
+  pts_.push({p:f2?f2.Tt:P2,o:'P2'});segs_.push({t:'line'});
+  if(f2){pts_.push({p:f2.Ta,o:'P2'});segs_.push({t:'arc',C:f2.C,R:R2});}
+  const emit=order=>{const seq=order==='fwd'?pts_:pts_.slice().reverse(),n=pts_.length;
+    let out=[gp('G1',seq[0].p)],prevO=seq[0].o;
+    for(let i=0;i<seq.length-1;i++){const A=seq[i],B=seq[i+1],sIdx=order==='fwd'?i:(n-2-i),sg=segs_[sIdx];
+      const g=sg.t==='line'?'G1':arcCode(A.p,B.p,sg.C);if(B.o!==prevO)out.push('');out.push(gp(g,B.p,sg.t==='arc'?sg.R:null));prevO=B.o;}
+    return out.join('\n');};
+  store.fwd=emit('fwd');store.rev=emit('rev');
+  G={P1,P2,f1,f2}; store.drew=true;
+  const nose=numv('noser');
+  $('foot').innerHTML = (nose!=null&&nose!==0)
+    ? '⚠ noseR(인선보정) 미적용 · 위 좌표는 도면 실좌표 (G41/G42용)'
+    : '도면 실좌표 · G41/G42 자동보정에 그대로 사용';
+  renderResult(); draw();
+}
+
+function renderResult(keepStale){
+  if(!store.drew){$('res2').innerHTML='';$('res3').innerHTML='';return;}
+  const esc=s=>s.replace(/</g,'&lt;');
+  const blk=k=>`<div class="ncb${dir===k?' cur':''}"><div class="nch"><b>${k==='fwd'?'정방향 절삭':'역방향 절삭'}</b><button class="cpb" onclick="copyNC('${k}',this)">복사</button></div><span class="hl">${esc(k==='fwd'?store.fwd:store.rev)}</span></div>`;
+  const pts='<span class="hl">'+esc(store.ptsTxt)+'</span>';
+  $('res2').innerHTML = pts + blk('fwd') + blk('rev');
+  $('res3').innerHTML = pts + blk(dir);   // 방향 화면: 고른 방향만
+  if(!keepStale){ $('res2').classList.remove('stale'); $('res3').classList.remove('stale'); }
+}
+function copyNC(k,btn){
+  const txt=(k==='fwd'?store.fwd:store.rev);
+  const show=(m,cls)=>{btn.textContent=m;btn.classList.add(cls);setTimeout(()=>{btn.textContent='복사';btn.classList.remove(cls);},1500);};
+  // 1순위: 누르는 순간 바로 복사 (파일로 열어도 동작)
+  let done=false;
+  try{ const ta=document.createElement('textarea'); ta.value=txt; ta.setAttribute('readonly','');
+    ta.style.position='fixed'; ta.style.top='0'; ta.style.opacity='0'; document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0,txt.length); done=document.execCommand('copy'); document.body.removeChild(ta); }catch(e){}
+  if(done){ show('복사됨','done'); return; }
+  // 2순위: 클립보드 API
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>show('복사됨','done'),()=>show('복사 실패','fail'));
+  else show('복사 실패','fail');
+}
+function markStale(){ if(store.drew){ $('res2').classList.add('stale'); $('res3').classList.add('stale'); } }
+
+/* ---------- 도면 ---------- */
+function draw(){
+  // 앱 방식: 각도는 실제값, 길이·R은 모식도(일정 크기)
+  const {P1,P2,f1,f2}=G;
+  const R1v=f1?1:0, R2v=f2?1:0;
+  const dz=P1.z-P2.z, dr=P1.r-P2.r, dl=Math.hypot(dz,dr)||1;
+  const d=[dz/dl, -dr/dl];                         // 화면방향 P2→P1 (x=Z, y=-X)
+  const Lt=200, SL=110, RR=34;
+  let q1=[ d[0]*Lt/2,  d[1]*Lt/2], q2=[-d[0]*Lt/2, -d[1]*Lt/2];
+  const sd=(adj,me,ot)=> adj==='cyl' ? [Math.sign(me.z-ot.z)||1,0] : [0,-(Math.sign(me.r-ot.r)||1)];
+  const u1=sd(adj1,P1,P2), u2=sd(adj2,P2,P1);
+  const add2=(a,b,k=1)=>[a[0]+b[0]*k,a[1]+b[1]*k], nrm=v=>{const l=Math.hypot(v[0],v[1])||1;return [v[0]/l,v[1]/l];};
+  const fil=(pc,toT,toS)=>{ const a=nrm(toT), b=nrm(toS);
+    const phi=Math.acos(Math.max(-1,Math.min(1,a[0]*b[0]+a[1]*b[1]))); if(phi<1e-3||Math.PI-phi<1e-3) return null;
+    const dd=RR/Math.tan(phi/2), bi=nrm([a[0]+b[0],a[1]+b[1]]);
+    return {Tt:add2(pc,a,dd), Ta:add2(pc,b,dd), C:add2(pc,bi,RR/Math.sin(phi/2))}; };
+  const F1=R1v?fil(q1,[q2[0]-q1[0],q2[1]-q1[1]],u1):null;
+  const F2=R2v?fil(q2,[q1[0]-q2[0],q1[1]-q2[1]],u2):null;
+  const e1=add2(F1?F1.Ta:q1,u1,SL), e2=add2(F2?F2.Ta:q2,u2,SL);
+  // 원 안에 맞게 이동·축척
+  const all=[q1,q2,e1,e2]; [F1,F2].forEach(F=>{if(F)all.push(add2(F.C,[0,0]),add2(F.C,[RR,0]),add2(F.C,[-RR,0]),add2(F.C,[0,RR]),add2(F.C,[0,-RR]));});
+  const xs=all.map(p=>p[0]), ys=all.map(p=>p[1]);
+  const cx0=(Math.min(...xs)+Math.max(...xs))/2, cy0=(Math.min(...ys)+Math.max(...ys))/2;
+  const mx=Math.max(...all.map(p=>Math.hypot(p[0]-cx0,p[1]-cy0)));
+  const k=Math.min(1,132/mx), M=p=>[180+(p[0]-cx0)*k, 180+(p[1]-cy0)*k];
+  const f=n=>n.toFixed(1);
+  const ln=(a,b,c,w)=>{const A=M(a),B=M(b);return `<line x1="${f(A[0])}" y1="${f(A[1])}" x2="${f(B[0])}" y2="${f(B[1])}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;};
+  const arc=F=>{const C=F.C,a0=Math.atan2(F.Tt[1]-C[1],F.Tt[0]-C[0]),a1=Math.atan2(F.Ta[1]-C[1],F.Ta[0]-C[0]);let dd=a1-a0;while(dd>Math.PI)dd-=2*Math.PI;while(dd<-Math.PI)dd+=2*Math.PI;let p='';for(let i=0;i<=16;i++){const t=a0+dd*i/16,Q=M([C[0]+RR*Math.cos(t),C[1]+RR*Math.sin(t)]);p+=(i?'L':'M')+f(Q[0])+' '+f(Q[1])+' ';}return p;};
+  let g=`<circle cx="180" cy="180" r="150" fill="none" stroke="#3e6e50" stroke-width="1.2"/>`;
+  [F1,F2].forEach((F,i)=>{ if(!F)return; const C=M(F.C);
+    g+=`<circle cx="${f(C[0])}" cy="${f(C[1])}" r="${f(RR*k)}" fill="none" stroke="#4f7d5f" stroke-width="1"/>`;
+    g+=`<text x="${f(C[0])}" y="${f(C[1])}" fill="#ef8fd4" font-size="12" text-anchor="middle" dominant-baseline="central">${i?'R2':'R1'}</text>`;
+    const pc=i?q2:q1; g+=ln(F.Tt,pc,'#4f7d5f',1)+ln(F.Ta,pc,'#4f7d5f',1); });
+  g+=ln(F2?F2.Tt:q2, F1?F1.Tt:q1,'#4fd37a',6);
+  g+=ln(F1?F1.Ta:q1,e1,'#4fd37a',6)+ln(F2?F2.Ta:q2,e2,'#4fd37a',6);
+  [F1,F2].forEach(F=>{if(F)g+=`<path d="${arc(F)}" fill="none" stroke="#4fd37a" stroke-width="6" stroke-linecap="round"/>`;});
+  // 각도 (P1 기준, P2 쪽 수평선)
+  const Q1=M(q1), Q2=M(q2), hd=Math.sign(Q2[0]-Q1[0])||-1, Qh=[Q1[0]+hd*72,Q1[1]];
+  g+=`<line x1="${f(Q1[0])}" y1="${f(Q1[1])}" x2="${f(Qh[0])}" y2="${f(Qh[1])}" stroke="#4fd37a" stroke-width="1.2"/>`;
+  const a0=Math.atan2(0,hd), a1=Math.atan2(Q2[1]-Q1[1],Q2[0]-Q1[0]); let del=a1-a0; while(del>Math.PI)del-=2*Math.PI; while(del<-Math.PI)del+=2*Math.PI;
+  let pth=''; for(let i=0;i<=16;i++){const t=a0+del*i/16; pth+=(i?'L':'M')+f(Q1[0]+30*Math.cos(t))+' '+f(Q1[1]+30*Math.sin(t))+' ';}
+  g+=`<path d="${pth}" fill="none" stroke="#4fd37a" stroke-width="1.2"/>`;
+  const halo='stroke="#1a1f24" stroke-width="3.5" paint-order="stroke"';
+  const T=(x,y,t,c,fs)=>`<text x="${f(x)}" y="${f(y)}" fill="${c}" font-size="${fs}" font-weight="700" text-anchor="middle" dominant-baseline="central" ${halo}>${t}</text>`;
+  const am=a0+del/2; g+=T(Q1[0]+48*Math.cos(am),Q1[1]+48*Math.sin(am),'각도','#4fd37a',12);
+  const away=(p,ns,dd)=>{const q=M(p);let vx=0,vy=0;ns.forEach(n=>{const m=M(n),x=m[0]-q[0],y=m[1]-q[1],l=Math.hypot(x,y)||1;vx+=x/l;vy+=y/l;});const l=Math.hypot(vx,vy);if(l<1e-6){vx=0;vy=-1;}else{vx/=l;vy/=l;}return [q[0]-vx*dd,q[1]-vy*dd];};
+  const P=(p,lbl,ns)=>{const q=M(p),o=away(p,ns,20);return `<circle cx="${f(q[0])}" cy="${f(q[1])}" r="3.5" fill="#7ee29d"/>`+T(o[0],o[1],lbl,'#7ee29d',14);};
+  // 코너R 있으면 앱처럼 P점에서 보조선 빼서 글자 달기 (끝선과 직각, 원 반대쪽)
+  const Pc=(pc,u,F,lbl)=>{const q=M(pc),c=M(F.C); const v= u[1]===0 ? [0,Math.sign(q[1]-c[1])||-1] : [Math.sign(q[0]-c[0])||1,0];
+    const e=[q[0]+v[0]*30,q[1]+v[1]*30];
+    return `<line x1="${f(q[0])}" y1="${f(q[1])}" x2="${f(e[0])}" y2="${f(e[1])}" stroke="#4f7d5f" stroke-width="1"/>`+T(e[0]+v[0]*11,e[1]+v[1]*11,lbl,'#7ee29d',14);};
+  g+= F1 ? Pc(q1,u1,F1,'P1') : P(q1,'P1',[q2,e1]);
+  g+= F2 ? Pc(q2,u2,F2,'P2') : P(q2,'P2',[q1,e2]);
+  // T 글자: 코너에서 멀어지는 쪽 + 원 바깥쪽으로 → 서로 안 겹침
+  const tp=(p,lbl,F,pc)=>{const q=M(p),c=M(F.C),k0=M(pc);const o=nrm([q[0]-c[0],q[1]-c[1]]),s=nrm([q[0]-k0[0],q[1]-k0[1]]);
+    return `<circle cx="${f(q[0])}" cy="${f(q[1])}" r="3.5" fill="#ef8fd4"/>`+T(q[0]+o[0]*12+s[0]*12,q[1]+o[1]*12+s[1]*12,lbl,'#ef8fd4',12);};
+  if(F1)g+=tp(F1.Ta,'T1',F1,q1)+tp(F1.Tt,'T2',F1,q1);
+  if(F2)g+=tp(F2.Tt,'T3',F2,q2)+tp(F2.Ta,'T4',F2,q2);
+  $('draw').innerHTML=g;
+}
+
+function renderDiag(P1,P2,P1e,P2e,refE){
+  // 원(중심180 반경150)에 맞게 자동 축척
+  const pts=[P1,P2,P1e,P2e,refE];
+  const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]);
+  const minx=Math.min(...xs),maxx=Math.max(...xs),miny=Math.min(...ys),maxy=Math.max(...ys);
+  const ccx=(minx+maxx)/2, ccy=(miny+maxy)/2, span=Math.max(maxx-minx,maxy-miny,1);
+  const sc=(150*1.35)/span;
+  const M=p=>[180+(p[0]-ccx)*sc, 180+(p[1]-ccy)*sc];
+  const q1=M(P1),q2=M(P2),q1e=M(P1e),q2e=M(P2e),qr=M(refE);
+  const line=(a,b,c,w)=>`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;
+  let g=`<circle cx="180" cy="180" r="150" fill="none" stroke="#3e6e50" stroke-width="1.2"/>`;
+  g+=line(q1,q2,'#4fd37a',6)+line(q1,q1e,'#4fd37a',6)+line(q2,q2e,'#4fd37a',6)+line(q1,qr,'#4fd37a',1.5);
+  const a0=Math.atan2(qr[1]-q1[1],qr[0]-q1[0]), a1=Math.atan2(q2[1]-q1[1],q2[0]-q1[0]);
+  let del=a1-a0; while(del>Math.PI)del-=2*Math.PI; while(del<-Math.PI)del+=2*Math.PI;
+  let pth=''; for(let i=0;i<=12;i++){const t=a0+del*i/12; pth+=(i?'L':'M')+(q1[0]+34*Math.cos(t)).toFixed(1)+' '+(q1[1]+34*Math.sin(t)).toFixed(1)+' ';}
+  g+=`<path d="${pth}" fill="none" stroke="#4fd37a" stroke-width="1.5"/>`;
+  const lt=a0+del/2;
+  g+=`<text x="${(q1[0]+50*Math.cos(lt)-14).toFixed(1)}" y="${(q1[1]+50*Math.sin(lt)+4).toFixed(1)}" fill="#9aa5b0" font-size="14">각도</text>`;
+  g+=`<circle cx="${q1[0].toFixed(1)}" cy="${q1[1].toFixed(1)}" r="4.5" fill="#4fd37a"/><text x="${(q1[0]+9).toFixed(1)}" y="${(q1[1]+5).toFixed(1)}" fill="#4fd37a" font-size="15" font-weight="700">P1</text>`;
+  g+=`<circle cx="${q2[0].toFixed(1)}" cy="${q2[1].toFixed(1)}" r="4.5" fill="#4fd37a"/><text x="${(q2[0]-32).toFixed(1)}" y="${(q2[1]-8).toFixed(1)}" fill="#4fd37a" font-size="15" font-weight="700">P2</text>`;
+  $('draw').innerHTML=g;
+}
+// 통합: 테이퍼 끝점 curB(P2) curC(P1) + 각 끝선 방향 d1(P1) d2(P2)
+// 앱 화면 실측 좌표(원 중심180 반경150 기준)
+function drawProfile(){
+  const up=SH.sl==='/';
+  const P1=up?[234,127]:[234,233], P2=up?[127,233]:[127,127];
+  const L=74;
+  const P1e = SH.p1==='h' ? [P1[0]+L,P1[1]] : [P1[0], P1[1]+(up?-L:L)];
+  const P2e = SH.p2==='h' ? [P2[0]-L,P2[1]] : [P2[0], P2[1]+(up?L:-L)];
+  const ln=(a,b,c,w)=>`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;
+  let g=`<circle cx="180" cy="180" r="150" fill="none" stroke="#3e6e50" stroke-width="1.2"/>`;
+  g+=ln(P2e,P2,'#4fd37a',6)+ln(P2,P1,'#4fd37a',6)+ln(P1,P1e,'#4fd37a',6);
+  g+=ln(P1,[P1[0]-75,P1[1]],'#4fd37a',1.2);                         // 각도 기준선(왼쪽)
+  const a0=Math.PI, a1=Math.atan2(P2[1]-P1[1],P2[0]-P1[0]);
+  let del=a1-a0; while(del>Math.PI)del-=2*Math.PI; while(del<-Math.PI)del+=2*Math.PI;
+  let pth=''; for(let i=0;i<=16;i++){const t=a0+del*i/16; pth+=(i?'L':'M')+(P1[0]+37*Math.cos(t)).toFixed(1)+' '+(P1[1]+37*Math.sin(t)).toFixed(1)+' ';}
+  g+=`<path d="${pth}" fill="none" stroke="#4fd37a" stroke-width="1.2"/>`;
+  const halo='stroke="#1a1f24" stroke-width="3.5" paint-order="stroke"';
+  const T=(x,y,t,anc,c,fs)=>`<text x="${x}" y="${y}" fill="${c}" font-size="${fs}" font-weight="700" text-anchor="${anc}" dominant-baseline="central" ${halo}>${t}</text>`;
+  g+=T(P1[0]-47, P1[1]+(up?13:-13), '각도','middle','#4fd37a',13);
+  g+=`<circle cx="${P1[0]}" cy="${P1[1]}" r="4" fill="#7ee29d"/><circle cx="${P2[0]}" cy="${P2[1]}" r="4" fill="#7ee29d"/>`;
+  g+= SH.p1==='v' ? T(P1[0]+11,P1[1],'P1','start','#7ee29d',15) : T(P1[0],P1[1]+(up?-17:17),'P1','middle','#7ee29d',15);
+  g+= SH.p2==='v' ? T(P2[0]-11,P2[1],'P2','end','#7ee29d',15)   : T(P2[0],P2[1]+(up?17:-17),'P2','middle','#7ee29d',15);
+  $('draw').innerHTML=g;
+}
+function drawPreview(){ drawProfile(); }
+let undoSnap=null;
+const INP=['x1','z1','r1','x2','z2','r2','ang','noser'];
+function reset(){
+  const any=INP.some(i=>$(i).value.trim()!=='' && !(i==='ang'&&$(i).value==='45.0'));
+  undoSnap = any ? {v:Object.fromEntries(INP.map(i=>[i,$(i).value])), drew:store.drew} : null;
+  ['x1','z1','r1','x2','z2','r2','ang','ih','kw','noser'].forEach(i=>{$(i).value='';$(i).classList.remove('solved');});
+  $('ang').value='45.0';
+  $('hint').innerHTML = undoSnap ? '초기화했습니다 <button class="undo" onclick="undoReset()">되돌리기</button>' : '계산 버튼(✓)은 좌표를 계산합니다.';
+  $('res2').innerHTML='';$('res3').innerHTML='';$('foot').textContent='';store.drew=false;
+  $('res2').classList.remove('stale'); $('res3').classList.remove('stale');
+  drawPreview();
+}
+function undoReset(){
+  if(!undoSnap) return;
+  Object.entries(undoSnap.v).forEach(([i,v])=>$(i).value=v);
+  const d=undoSnap.drew; undoSnap=null;
+  $('hint').textContent='계산 버튼(✓)은 좌표를 계산합니다.';
+  if(d) calc();
+}
+
+let lastInp=null;
+document.addEventListener('input',e=>{const t=e.target; if(t&&t.classList&&t.classList.contains('f')){ t.classList.remove('solved'); markStale(); }});
+document.addEventListener('focusin',e=>{const t=e.target; if(t&&t.classList&&t.classList.contains('f')&&!t.readOnly) lastInp=t;});
+function flipSign(){ const el=lastInp; if(!el) return;
+  const v=el.value.trim(); el.value = v.startsWith('-') ? v.slice(1) : '-'+v; el.classList.remove('solved'); markStale(); el.focus(); }
+buildGrid();
+drawPreview();
+</script>
+</body>
+</html>
